@@ -39,3 +39,72 @@
 
 # debug information files
 *.dwo
+
+# --- CMake build directories (repo root) ---
+/build*/
+/cmake-build-*/
+
+# --- CMake generated files (anywhere) ---
+**/CMakeCache.txt
+**/CMakeFiles/
+**/cmake_install.cmake
+**/install_manifest.txt
+**/CTestTestfile.cmake
+**/CPackConfig.cmake
+**/CPackSourceConfig.cmake
+**/Makefile
+**/*.ninja
+**/.ninja_deps
+**/.ninja_log
+**/compile_commands.json
+
+# --- Visual Studio / MSBuild ---
+.vs/
+**/*.sln
+**/*.vcxproj
+**/*.vcxproj.filters
+**/*.vcxproj.user
+**/*.vcxproj.*.user
+**/*.vcproj
+**/*.vcproj.*.user
+**/*.suo
+**/*.user
+**/*.userosscache
+**/*.sln.docstates
+**/x64/
+**/Win32/
+**/Debug/
+**/Release/
+**/RelWithDebInfo/
+**/MinSizeRel/
+**/CMakeSettings.json
+
+# --- MSVC intermediate files ---
+**/*.idb
+**/*.ipdb
+**/*.iobj
+**/*.ipch
+**/*.tlog
+**/*.lastbuildstate
+**/*.log
+
+# --- Local developer presets ---
+CMakeUserPresets.json
+
+# --- Python caches (repo has python/ folder) ---
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+.venv/
+venv/
+
+# --- Misc / editor tooling ---
+.idea/
+.clangd/
+.cache/
+Thumbs.db
+Desktop.ini
+
+# --- Project outputs (example render) ---
+/out.ppm
