@@ -31,9 +31,9 @@ def look_at(eye: torch.Tensor, target: torch.Tensor, up: torch.Tensor) -> torch.
     f = target - eye
     f = f / (torch.linalg.norm(f) + 1e-8)
     u = up / (torch.linalg.norm(up) + 1e-8)
-    s = torch.cross(f, u)
+    s = torch.linalg.cross(f, u)
     s = s / (torch.linalg.norm(s) + 1e-8)
-    u2 = torch.cross(s, f)
+    u2 = torch.linalg.cross(s, f)
 
     m = torch.eye(4, dtype=torch.float32, device=eye.device)
     m[0, :3] = s
@@ -79,6 +79,7 @@ def render_gaussians_torch(
     height: int,
     background: Optional[torch.Tensor] = None,  # (3,)
     max_gaussians: int = 10000,
+    chunk_size: int = 256,
 ) -> torch.Tensor:
     """A *differentiable* reference renderer in PyTorch.
 
@@ -114,21 +115,40 @@ def render_gaussians_torch(
     xs = torch.arange(width, device=means.device, dtype=torch.float32) + 0.5
     grid_y, grid_x = torch.meshgrid(ys, xs, indexing="ij")
 
-    accum_rgb = torch.zeros((height, width, 3), dtype=torch.float32, device=means.device)
-    accum_w = torch.zeros((height, width), dtype=torch.float32, device=means.device)
+    hw = height * width
+    accum_rgb_flat = torch.zeros((hw, 3), dtype=torch.float32, device=means.device)
+    accum_w_flat = torch.zeros((hw,), dtype=torch.float32, device=means.device)
 
-    # Loop gaussians; each iteration is fully vectorized over pixels.
-    for i in range(n):
-        if not bool(valid[i]):
+    # Chunk gaussians to reduce Python overhead.
+    # This is still O(N*H*W), but avoids an N-sized Python loop.
+    if chunk_size is None or chunk_size <= 0:
+        chunk_size = 1
+
+    for start in range(0, n, chunk_size):
+        end = min(n, start + chunk_size)
+        v = valid[start:end]
+        if not bool(v.any()):
             continue
-        dx = grid_x - px[i]
-        dy = grid_y - py[i]
-        e = -0.5 * ((dx * dx) / (sigma_x[i] * sigma_x[i]) + (dy * dy) / (sigma_y[i] * sigma_y[i]))
-        w = opacities[i].clamp_min(0.0) * torch.exp(e)
-        if torch.isfinite(w).all():
-            accum_rgb = accum_rgb + w.unsqueeze(-1) * colors[i]
-            accum_w = accum_w + w
 
+        px_c = px[start:end].to(torch.float32)
+        py_c = py[start:end].to(torch.float32)
+        sx_c = sigma_x[start:end].to(torch.float32)
+        sy_c = sigma_y[start:end].to(torch.float32)
+        op_c = opacities[start:end].to(torch.float32).clamp_min(0.0)
+        col_c = colors[start:end].to(torch.float32)
+
+        dx = grid_x.unsqueeze(0) - px_c.view(-1, 1, 1)
+        dy = grid_y.unsqueeze(0) - py_c.view(-1, 1, 1)
+        e = -0.5 * ((dx * dx) / (sx_c.view(-1, 1, 1) ** 2) + (dy * dy) / (sy_c.view(-1, 1, 1) ** 2))
+        w = op_c.view(-1, 1, 1) * torch.exp(e)
+        w = w * v.to(dtype=torch.float32).view(-1, 1, 1)
+
+        w_flat = w.reshape(end - start, hw)  # (C,HW)
+        accum_w_flat = accum_w_flat + w_flat.sum(dim=0)
+        accum_rgb_flat = accum_rgb_flat + (w_flat.t() @ col_c)  # (HW,3)
+
+    accum_rgb = accum_rgb_flat.view(height, width, 3)
+    accum_w = accum_w_flat.view(height, width)
     denom = 1.0 + accum_w
     out = (background.view(1, 1, 3) + accum_rgb) / denom.unsqueeze(-1)
     return out.clamp(0.0, 1.0)

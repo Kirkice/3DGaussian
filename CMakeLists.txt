@@ -57,7 +57,12 @@ endif()
 
 set(GR_CORE_SOURCES
   src/obj_to_gaussians.cpp
+  src/colors_io.cpp
 )
+
+if(WIN32)
+  list(APPEND GR_CORE_SOURCES src/image_io_wic.cpp)
+endif()
 
 if(GR_ENABLE_CUDA)
   enable_language(CUDA)
@@ -104,6 +109,10 @@ endif()
 add_library(gaussian_core STATIC ${GR_CORE_SOURCES})
 target_include_directories(gaussian_core PUBLIC include)
 target_link_libraries(gaussian_core PUBLIC tinyobjloader)
+
+if(WIN32)
+  target_link_libraries(gaussian_core PRIVATE windowscodecs ole32)
+endif()
 
 if(GR_ENABLE_CUDA)
   target_compile_definitions(gaussian_core PUBLIC GR_CUDA_ENABLED=1)

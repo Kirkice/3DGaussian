@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "gr/colors_io.h"
 #include "gr/obj_to_gaussians.h"
 #include "gr/renderer.h"
 
@@ -103,9 +104,23 @@ int main(int argc, char** argv) {
   const float default_scale = parse_float_arg(argc, argv, "--scale", 0.01f);
   const float default_opacity = parse_float_arg(argc, argv, "--opacity", 0.8f);
   const float fovy = parse_float_arg(argc, argv, "--fovy", 60.0f);
+  const std::string colors_bin = parse_str_arg(argc, argv, "--colors_bin", "");
+  const int enable_sort = parse_int_arg(argc, argv, "--sort", 0);
+  const int sort_slices = parse_int_arg(argc, argv, "--slices", 16);
 
   try {
     gr::GaussiansHost g = gr::load_obj_as_gaussians(obj, default_scale, default_opacity, samples);
+
+    if (!colors_bin.empty()) {
+      std::string err;
+      std::vector<float> colors;
+      if (!gr::load_colors_bin(colors_bin, g.count(), colors, err)) {
+        std::cerr << "Failed to load colors_bin: " << colors_bin << " (" << err << ")\n";
+        return 1;
+      }
+      g.colors = std::move(colors);
+      std::cout << "Loaded colors override: " << colors_bin << "\n";
+    }
     const int n0 = g.count();
     const int n = (max_gaussians > 0) ? std::min(n0, max_gaussians) : n0;
 
@@ -140,6 +155,8 @@ int main(int argc, char** argv) {
     params.background[0] = 0.02f;
     params.background[1] = 0.02f;
     params.background[2] = 0.02f;
+    params.enable_depth_sort = enable_sort;
+    params.depth_slices = sort_slices;
 
     const float target[3] = {0.0f, 0.0f, 0.0f};
     const float up[3] = {0.0f, 1.0f, 0.0f};

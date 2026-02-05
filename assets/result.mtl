@@ -1,0 +1,47 @@
+# Auto-generated minimal MTL for assets/mabo.obj
+# Provides diffuse textures for material names used by the mesh.
+
+newmtl mtl_mbdy1062_00
+Kd 1.0 1.0 1.0
+Ka 0.0 0.0 0.0
+map_Kd mabo_textures/tex_mbdy1062_00_diff.png
+
+newmtl mtl_mchr0001_00_cheek
+Kd 1.0 1.0 1.0
+Ka 0.0 0.0 0.0
+map_Kd mabo_textures/tex_mchr0001_00_face0_1_cheek0.png
+
+newmtl mtl_mchr0001_00_eye
+Kd 1.0 1.0 1.0
+Ka 0.0 0.0 0.0
+map_Kd mabo_textures/tex_mchr1062_00_eye_diff.png
+
+newmtl mtl_mchr0001_00_face0
+Kd 1.0 1.0 1.0
+Ka 0.0 0.0 0.0
+map_Kd mabo_textures/tex_mchr0001_00_face0_1_diff.png
+
+newmtl mtl_mchr0001_00_mayu_l
+Kd 1.0 1.0 1.0
+Ka 0.0 0.0 0.0
+map_Kd mabo_textures/tex_mchr1062_00_mayu_diff.png
+
+newmtl mtl_mchr0001_00_mayu_r
+Kd 1.0 1.0 1.0
+Ka 0.0 0.0 0.0
+map_Kd mabo_textures/tex_mchr1062_00_mayu_diff.png
+
+newmtl mtl_mchr0001_00_mouth
+Kd 1.0 1.0 1.0
+Ka 0.0 0.0 0.0
+map_Kd mabo_textures/tex_mchr1062_00_mouth_diff.png
+
+newmtl mtl_mchr1062_00_hair
+Kd 1.0 1.0 1.0
+Ka 0.0 0.0 0.0
+map_Kd mabo_textures/tex_mchr1062_00_hair_diff.png
+
+newmtl mtl_mtail0001_00
+Kd 1.0 1.0 1.0
+Ka 0.0 0.0 0.0
+map_Kd mabo_textures/tex_mtail0001_00_1062_diff.png

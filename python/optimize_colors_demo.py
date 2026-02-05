@@ -13,13 +13,24 @@ def main():
     ap.add_argument("--width", type=int, default=128)
     ap.add_argument("--height", type=int, default=128)
     ap.add_argument("--lr", type=float, default=0.05)
+    ap.add_argument(
+        "--num_surface_samples",
+        type=int,
+        default=4000,
+        help="Gaussian count for surface sampling. Keep <= 10000 for the torch reference renderer.",
+    )
     args = ap.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     import gaussian_renderer as gr
 
-    g = gr.load_obj_as_gaussians(args.obj, default_scale=0.02, default_opacity=0.9)
+    g = gr.load_obj_as_gaussians(
+        args.obj,
+        default_scale=0.02,
+        default_opacity=0.9,
+        num_surface_samples=args.num_surface_samples,
+    )
     means = torch.from_numpy(np.asarray(g["means"], dtype=np.float32)).to(device)
     scales = torch.from_numpy(np.asarray(g["scales"], dtype=np.float32)).to(device)
     opacities = torch.from_numpy(np.asarray(g["opacities"], dtype=np.float32)).to(device)

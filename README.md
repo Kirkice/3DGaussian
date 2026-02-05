@@ -127,7 +127,8 @@ Outputs: `target.png`, `optimized.png`.
 
 ## Notes
 
-- Conversion: currently 1 vertex -> 1 Gaussian, with constant scale and opacity.
+- Conversion: surface sampling uses constant scale and opacity.
+- If the OBJ has UVs + an MTL with diffuse textures (or known mabo material names), per-Gaussian `colors` are sampled from the texture.
 - Renderer: naive per-Gaussian splat into an accumulation buffer (good enough to verify the pipeline).
 
 Next steps typically include: sampling more points on faces, per-Gaussian anisotropy + rotation, proper alpha compositing, tile-based binning, and SH shading.

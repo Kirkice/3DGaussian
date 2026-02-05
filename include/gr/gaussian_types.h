@@ -30,6 +30,14 @@ struct RenderParams {
   float proj[16] = {0};
 
   float background[3] = {0.0f, 0.0f, 0.0f};
+
+  // Transparency compositing mode.
+  // 0: legacy order-independent weighted average (fast, but wrong occlusion)
+  // 1: depth-aware compositing (CPU: global sort; CUDA: depth slicing approximation)
+  int enable_depth_sort = 0;
+  // Only used when enable_depth_sort=1.
+  // CUDA mode uses this many depth slices (higher = better ordering, more memory).
+  int depth_slices = 16;
 };
 
 }  // namespace gr

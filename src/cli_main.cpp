@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "gr/colors_io.h"
 #include "gr/obj_to_gaussians.h"
 #include "gr/renderer.h"
 
@@ -85,7 +86,7 @@ static bool write_ppm(const std::string& path, int w, int h, const std::vector<s
 
 int main(int argc, char** argv) {
   if (argc < 3) {
-    std::cerr << "Usage: gaussian_render_cli <model.obj> <out.ppm> [width height [samples]]\n";
+    std::cerr << "Usage: gaussian_render_cli <model.obj> <out.ppm> [width height [samples]] [--colors_bin path] \n";
     return 2;
   }
   const std::string obj = argv[1];
@@ -94,8 +95,36 @@ int main(int argc, char** argv) {
   const int height = (argc >= 5) ? std::atoi(argv[4]) : 540;
   const int samples = (argc >= 6) ? std::atoi(argv[5]) : 200000;
 
+  auto parse_colors_bin = [&](int argc2, char** argv2) -> std::string {
+    for (int i = 1; i + 1 < argc2; ++i) {
+      if (std::string(argv2[i]) == "--colors_bin") return std::string(argv2[i + 1]);
+    }
+    return std::string();
+  };
+  const std::string colors_bin = parse_colors_bin(argc, argv);
+
+  auto parse_int_flag = [&](const char* key, int def) -> int {
+    for (int i = 1; i + 1 < argc; ++i) {
+      if (std::string(argv[i]) == key) return std::atoi(argv[i + 1]);
+    }
+    return def;
+  };
+  const int enable_sort = parse_int_flag("--sort", 0);
+  const int sort_slices = parse_int_flag("--slices", 16);
+
   try {
     gr::GaussiansHost g = gr::load_obj_as_gaussians(obj, 0.01f, 0.8f, samples);
+
+    if (!colors_bin.empty()) {
+      std::string err;
+      std::vector<float> colors;
+      if (!gr::load_colors_bin(colors_bin, g.count(), colors, err)) {
+        std::cerr << "Failed to load colors_bin: " << colors_bin << " (" << err << ")\n";
+        return 1;
+      }
+      g.colors = std::move(colors);
+      std::cout << "Loaded colors override: " << colors_bin << "\n";
+    }
 
     gr::RenderParams params;
     params.width = width;
@@ -103,6 +132,8 @@ int main(int argc, char** argv) {
     params.background[0] = 0.02f;
     params.background[1] = 0.02f;
     params.background[2] = 0.02f;
+    params.enable_depth_sort = enable_sort;
+    params.depth_slices = sort_slices;
 
     const float eye[3] = {0.0f, 0.0f, 2.5f};
     const float target[3] = {0.0f, 0.0f, 0.0f};
