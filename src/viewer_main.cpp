@@ -107,6 +107,8 @@ int main(int argc, char** argv) {
   const std::string colors_bin = parse_str_arg(argc, argv, "--colors_bin", "");
   const int enable_sort = parse_int_arg(argc, argv, "--sort", 0);
   const int sort_slices = parse_int_arg(argc, argv, "--slices", 16);
+  const int true_sort = parse_int_arg(argc, argv, "--true_sort", 0);
+  const int hide_gui_arg = parse_int_arg(argc, argv, "--hide_gui", 0);
 
   try {
     gr::GaussiansHost g = gr::load_obj_as_gaussians(obj, default_scale, default_opacity, samples);
@@ -148,6 +150,7 @@ int main(int argc, char** argv) {
     float yaw = 0.0f;
     float pitch = 0.2f;
     float radius = 2.5f;
+    bool show_gui = (hide_gui_arg == 0);
 
     gr::RenderParams params;
     params.width = width;
@@ -155,8 +158,9 @@ int main(int argc, char** argv) {
     params.background[0] = 0.02f;
     params.background[1] = 0.02f;
     params.background[2] = 0.02f;
-    params.enable_depth_sort = enable_sort;
+    params.enable_depth_sort = (true_sort != 0) ? 1 : enable_sort;
     params.depth_slices = sort_slices;
+    params.force_cpu = (true_sort != 0) ? 1 : 0;
 
     const float target[3] = {0.0f, 0.0f, 0.0f};
     const float up[3] = {0.0f, 1.0f, 0.0f};
@@ -183,6 +187,9 @@ int main(int argc, char** argv) {
         pitch = 0.2f;
         radius = 2.5f;
       }
+      if (IsKeyPressed(KEY_H)) {
+        show_gui = !show_gui;
+      }
 
       // Camera orbit around origin
       float eye[3];
@@ -194,7 +201,7 @@ int main(int argc, char** argv) {
       perspective(fovy, static_cast<float>(width) / static_cast<float>(height), 0.01f, 100.0f, params.proj);
 
       // Render
-      std::vector<std::uint8_t> rgba = gr::render_gaussians_cuda(
+        std::vector<std::uint8_t> rgba = gr::render_gaussians(
           g.means.data(), g.scales.data(), g.colors.data(), g.opacities.data(), n, params);
 
       UpdateTexture(tex, rgba.data());
@@ -214,10 +221,12 @@ int main(int argc, char** argv) {
       ClearBackground(BLACK);
       DrawTexture(tex, 0, 0, WHITE);
 
-      DrawRectangle(10, 10, 420, 70, Fade(BLACK, 0.6f));
-      const char* backend = (GR_CUDA_ENABLED != 0) ? "CUDA" : "CPU";
-      DrawText(TextFormat("Backend: %s  Gaussians: %d  FPS: %.1f", backend, n, fps_smooth), 20, 20, 20, RAYWHITE);
-      DrawText("LMB drag: orbit | Wheel: zoom | R: reset", 20, 45, 18, RAYWHITE);
+      if (show_gui) {
+        DrawRectangle(10, 10, 480, 70, Fade(BLACK, 0.6f));
+        const char* backend = (params.force_cpu != 0) ? "CPU(true-sort)" : ((GR_CUDA_ENABLED != 0) ? "CUDA" : "CPU");
+        DrawText(TextFormat("Backend: %s  Gaussians: %d  FPS: %.1f", backend, n, fps_smooth), 20, 20, 20, RAYWHITE);
+        DrawText("LMB drag: orbit | Wheel: zoom | R: reset | H: hide HUD", 20, 45, 18, RAYWHITE);
+      }
 
       EndDrawing();
     }

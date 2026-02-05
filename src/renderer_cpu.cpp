@@ -10,6 +10,14 @@
 
 namespace gr {
 
+std::vector<std::uint8_t> render_gaussians_cpu(
+  const float* means,
+  const float* scales,
+  const float* colors,
+  const float* opacities,
+  int n,
+  const RenderParams& params);
+
 static inline void mat4_mul_vec4_rowmajor(const float m[16], const float v[4], float out[4]) {
   out[0] = m[0] * v[0] + m[1] * v[1] + m[2] * v[2] + m[3] * v[3];
   out[1] = m[4] * v[0] + m[5] * v[1] + m[6] * v[2] + m[7] * v[3];
@@ -23,7 +31,7 @@ static inline float clamp01(float x) {
   return x;
 }
 
-std::vector<std::uint8_t> render_gaussians_cuda(
+std::vector<std::uint8_t> render_gaussians_cpu(
     const float* means,
     const float* scales,
     const float* colors,
@@ -250,5 +258,17 @@ std::vector<std::uint8_t> render_gaussians_cuda(
 
   return out;
 }
+
+#if GR_CUDA_ENABLED == 0
+std::vector<std::uint8_t> render_gaussians_cuda(
+    const float* means,
+    const float* scales,
+    const float* colors,
+    const float* opacities,
+    int n,
+    const RenderParams& params) {
+  return render_gaussians_cpu(means, scales, colors, opacities, n, params);
+}
+#endif
 
 }  // namespace gr

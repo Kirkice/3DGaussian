@@ -58,6 +58,8 @@ endif()
 set(GR_CORE_SOURCES
   src/obj_to_gaussians.cpp
   src/colors_io.cpp
+  src/renderer_cpu.cpp
+  src/renderer_dispatch.cpp
 )
 
 if(WIN32)
@@ -102,8 +104,7 @@ if(GR_ENABLE_CUDA)
   find_package(CUDAToolkit REQUIRED)
   list(APPEND GR_CORE_SOURCES src/renderer.cu)
 else()
-  message(STATUS "GR_ENABLE_CUDA=OFF: building CPU fallback renderer")
-  list(APPEND GR_CORE_SOURCES src/renderer_cpu.cpp)
+  message(STATUS "GR_ENABLE_CUDA=OFF: building CPU renderer")
 endif()
 
 add_library(gaussian_core STATIC ${GR_CORE_SOURCES})

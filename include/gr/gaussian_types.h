@@ -38,6 +38,11 @@ struct RenderParams {
   // Only used when enable_depth_sort=1.
   // CUDA mode uses this many depth slices (higher = better ordering, more memory).
   int depth_slices = 16;
+
+  // Force using the CPU renderer even when CUDA is available.
+  // This is useful for "true sorting" mode (global sort + alpha compositing),
+  // which is currently only implemented on CPU.
+  int force_cpu = 0;
 };
 
 }  // namespace gr

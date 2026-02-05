@@ -111,6 +111,7 @@ int main(int argc, char** argv) {
   };
   const int enable_sort = parse_int_flag("--sort", 0);
   const int sort_slices = parse_int_flag("--slices", 16);
+  const int true_sort = parse_int_flag("--true_sort", 0);
 
   try {
     gr::GaussiansHost g = gr::load_obj_as_gaussians(obj, 0.01f, 0.8f, samples);
@@ -132,8 +133,9 @@ int main(int argc, char** argv) {
     params.background[0] = 0.02f;
     params.background[1] = 0.02f;
     params.background[2] = 0.02f;
-    params.enable_depth_sort = enable_sort;
+    params.enable_depth_sort = (true_sort != 0) ? 1 : enable_sort;
     params.depth_slices = sort_slices;
+    params.force_cpu = (true_sort != 0) ? 1 : 0;
 
     const float eye[3] = {0.0f, 0.0f, 2.5f};
     const float target[3] = {0.0f, 0.0f, 0.0f};
@@ -141,7 +143,7 @@ int main(int argc, char** argv) {
     look_at(eye, target, up, params.view);
     perspective(60.0f, static_cast<float>(width) / static_cast<float>(height), 0.01f, 100.0f, params.proj);
 
-    std::vector<std::uint8_t> rgba = gr::render_gaussians_cuda(
+    std::vector<std::uint8_t> rgba = gr::render_gaussians(
         g.means.data(), g.scales.data(), g.colors.data(), g.opacities.data(), g.count(), params);
 
     if (!write_ppm(out, width, height, rgba)) {

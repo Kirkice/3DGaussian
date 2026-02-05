@@ -105,7 +105,7 @@ PYBIND11_MODULE(gaussian_renderer, m) {
         std::memcpy(params.proj, proj.data(), sizeof(float) * 16);
         std::memcpy(params.background, bg_arr.data(), sizeof(float) * 3);
 
-        std::vector<std::uint8_t> rgba = gr::render_gaussians_cuda(
+        std::vector<std::uint8_t> rgba = gr::render_gaussians(
             static_cast<const float*>(means.data()),
             static_cast<const float*>(scales.data()),
             static_cast<const float*>(colors.data()),
