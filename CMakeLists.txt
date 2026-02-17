@@ -8,6 +8,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(GR_ENABLE_CUDA "Enable CUDA renderer" ON)
 option(GR_BUILD_PYTHON "Build Python extension module" ON)
+option(GR_BUILD_NATIVE_VIEWER "Build realtime Gaussian model viewer" ON)
 
 if(GR_BUILD_PYTHON)
   find_package(Python COMPONENTS Interpreter Development QUIET)
@@ -28,6 +29,53 @@ if(GR_BUILD_PYTHON)
     GIT_TAG v2.12.0
   )
   FetchContent_MakeAvailable(pybind11)
+endif()
+
+if(GR_BUILD_NATIVE_VIEWER)
+  set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
+
+  set(GR_RAYLIB_TARGET raylib)
+  if(EXISTS "${CMAKE_SOURCE_DIR}/vendor/raylib/CMakeLists.txt")
+    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
+    add_subdirectory(vendor/raylib EXCLUDE_FROM_ALL)
+
+    if(TARGET raylib::raylib)
+      set(GR_RAYLIB_TARGET raylib::raylib)
+    elseif(TARGET raylib)
+      set(GR_RAYLIB_TARGET raylib)
+    elseif(TARGET raylib_static)
+      set(GR_RAYLIB_TARGET raylib_static)
+    endif()
+  else()
+    find_package(raylib QUIET)
+
+    if(TARGET raylib::raylib)
+      set(GR_RAYLIB_TARGET raylib::raylib)
+    elseif(TARGET raylib)
+      set(GR_RAYLIB_TARGET raylib)
+    elseif(TARGET raylib_static)
+      set(GR_RAYLIB_TARGET raylib_static)
+    else()
+      set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
+      FetchContent_Declare(
+        raylib
+        GIT_REPOSITORY https://github.com/raysan5/raylib.git
+        GIT_TAG ae50bfa2cc569c0f8d5bc4315d39db64005b1b08
+      )
+      set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+      set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
+      FetchContent_MakeAvailable(raylib)
+    endif()
+  endif()
+
+  find_package(ZLIB REQUIRED)
+  FetchContent_Declare(
+    cnpy
+    GIT_REPOSITORY https://github.com/rogersce/cnpy.git
+    GIT_TAG master
+  )
+  FetchContent_MakeAvailable(cnpy)
 endif()
 
 set(GR_CORE_SOURCES
@@ -107,6 +155,19 @@ if(GR_BUILD_PYTHON)
   endif()
 endif()
 
+if(GR_BUILD_NATIVE_VIEWER)
+  add_executable(gaussian_native_viewer src/model_viewer_main.cpp)
+  target_link_libraries(gaussian_native_viewer PRIVATE gaussian_core ${GR_RAYLIB_TARGET} cnpy ZLIB::ZLIB)
+  target_include_directories(gaussian_native_viewer PRIVATE ${cnpy_SOURCE_DIR})
+  if(GR_ENABLE_CUDA)
+    target_sources(gaussian_native_viewer PRIVATE src/cuda_link_stub.cu)
+    set_target_properties(gaussian_native_viewer PROPERTIES
+      CUDA_SEPARABLE_COMPILATION ON
+      CUDA_RESOLVE_DEVICE_SYMBOLS ON
+    )
+  endif()
+endif()
+
 # Make MSVC + NVCC a bit happier with modern C++.
 if(MSVC)
   # IMPORTANT: Don't pass MSVC-only flags (like /EHsc) to CUDA compilation.
@@ -115,5 +176,8 @@ if(MSVC)
   target_compile_options(gaussian_core PUBLIC $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
   if(TARGET gaussian_renderer)
     target_compile_options(gaussian_renderer PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
+  endif()
+  if(TARGET gaussian_native_viewer)
+    target_compile_options(gaussian_native_viewer PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
   endif()
 endif()

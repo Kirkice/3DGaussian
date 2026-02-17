@@ -38,6 +38,37 @@ Outputs are written to `outputs/fit_multiview_stub`:
 - `loss.txt`
 - `preview_view0.png`
 
+## View 3D Gaussian model
+
+Interactive viewer:
+
+```bash
+python python/view_gaussians.py --npz outputs/fit_multiview_stub/gaussians_fitted.npz
+```
+
+Save a rendered snapshot:
+
+```bash
+python python/view_gaussians.py --npz outputs/fit_multiview_stub/gaussians_fitted.npz --save outputs/fit_multiview_stub/gaussians_view.png
+```
+
+## Native realtime Gaussian viewer (C++)
+
+Build:
+
+```bash
+cmake -S . -B build_native -DGR_ENABLE_CUDA=OFF -DGR_BUILD_PYTHON=ON -DGR_BUILD_NATIVE_VIEWER=ON
+cmake --build build_native -j --target gaussian_native_viewer
+```
+
+Run:
+
+```bash
+./build_native/gaussian_native_viewer outputs/fit_scene_tex_m1/gaussians_fitted.npz --width 960 --height 540
+```
+
+Controls: left mouse drag orbit, mouse wheel zoom, `R` reset, `H` toggle HUD.
+
 ## Notes
 
 - This is a fitting scaffold for the upcoming photo/video multiview pipeline.

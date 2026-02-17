@@ -103,8 +103,17 @@ venv/
 .idea/
 .clangd/
 .cache/
+.DS_Store
 Thumbs.db
 Desktop.ini
 
 # --- Project outputs (example render) ---
 /out.ppm
+
+# --- Training / fitting outputs ---
+/outputs/
+*.npz
+*.npy
+
+# --- Local vendored dependencies ---
+/vendor/raylib/

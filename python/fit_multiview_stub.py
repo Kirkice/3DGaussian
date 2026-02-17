@@ -13,9 +13,15 @@ from torch_renderer import Camera, look_at, perspective, render_gaussians_torch
 
 
 def _load_targets(targets_dir: Path, width: int, height: int, device: torch.device) -> list[torch.Tensor]:
-    paths = sorted(targets_dir.glob("*.png"))
+    paths = sorted(
+        [
+            *targets_dir.glob("*.png"),
+            *targets_dir.glob("*.jpg"),
+            *targets_dir.glob("*.jpeg"),
+        ]
+    )
     if not paths:
-        raise FileNotFoundError(f"No PNG files found in {targets_dir}")
+        raise FileNotFoundError(f"No target images found in {targets_dir} (supported: png/jpg/jpeg)")
 
     targets: list[torch.Tensor] = []
     for p in paths:
