@@ -32,6 +32,25 @@ Prepare a folder containing target PNG views, then run:
 python python/fit_multiview_stub.py --targets_dir assets/targetTexture --iters 150 --width 128 --height 128
 ```
 
+Advanced options:
+
+```bash
+python python/fit_multiview_stub.py \
+	--targets_dir assets/scene_tex \
+	--camera_npz data/cameras.npz \
+	--use_sh \
+	--densify_interval 80 --prune_interval 80 \
+	--silhouette_weight 0.2 --masks_dir data/masks \
+	--depth_weight 0.05 --depth_dir data/depth \
+	--num_gaussians 1200 --max_gaussians 3000 \
+	--iters 600 --width 256 --height 256
+```
+
+`camera_npz` format:
+
+- `view`: `(V, 4, 4)` float32
+- `proj`: `(V, 4, 4)` float32
+
 Outputs are written to `outputs/fit_multiview_stub`:
 
 - `gaussians_fitted.npz`

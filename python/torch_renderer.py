@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import platform
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 
@@ -78,10 +78,38 @@ def _project(means: torch.Tensor, view: torch.Tensor, proj: torch.Tensor, width:
     return px, py, z_abs, valid
 
 
+def _camera_position_from_view(view: torch.Tensor) -> torch.Tensor:
+    inv_view = torch.linalg.inv(view)
+    return inv_view[:3, 3]
+
+
+def _eval_colors(
+    colors: torch.Tensor,
+    means: torch.Tensor,
+    camera_view: torch.Tensor,
+) -> torch.Tensor:
+    if colors.ndim == 2 and colors.shape[1] == 3:
+        return colors
+
+    if colors.ndim == 3 and colors.shape[1] == 4 and colors.shape[2] == 3:
+        cam_pos = _camera_position_from_view(camera_view)
+        dirs = cam_pos.view(1, 3) - means
+        dirs = dirs / (torch.linalg.norm(dirs, dim=1, keepdim=True) + 1e-8)
+
+        dc = colors[:, 0, :]
+        c1x = colors[:, 1, :]
+        c1y = colors[:, 2, :]
+        c1z = colors[:, 3, :]
+        out = dc + c1x * dirs[:, 0:1] + c1y * dirs[:, 1:2] + c1z * dirs[:, 2:3]
+        return out
+
+    raise ValueError("colors must be (N,3) or SH coeffs (N,4,3)")
+
+
 def render_gaussians_torch(
     means: torch.Tensor,      # (N,3) float32
     scales: torch.Tensor,     # (N,3) float32
-    colors: torch.Tensor,     # (N,3) float32 (0..1)
+    colors: torch.Tensor,     # (N,3) or SH coeffs (N,4,3)
     opacities: torch.Tensor,  # (N,)  float32
     camera: Camera,
     width: int,
@@ -89,7 +117,8 @@ def render_gaussians_torch(
     background: Optional[torch.Tensor] = None,  # (3,)
     max_gaussians: int = 10000,
     chunk_size: int = 256,
-) -> torch.Tensor:
+    return_aux: bool = False,
+):
     """A *differentiable* reference renderer in PyTorch.
 
     It is intentionally simple (O(N*H*W)). Use for experiments/optimization at small sizes.
@@ -112,6 +141,7 @@ def render_gaussians_torch(
     proj = camera.proj.to(dtype=torch.float32, device=means.device)
 
     px, py, z_abs, valid = _project(means, view, proj, width, height)
+    colors_eval = _eval_colors(colors.to(dtype=torch.float32, device=means.device), means, view).clamp(0.0, 1.0)
 
     # Approximate screen-space sigma similar to C++ path.
     fx = proj[0, 0].abs()
@@ -127,6 +157,7 @@ def render_gaussians_torch(
     hw = height * width
     accum_rgb_flat = torch.zeros((hw, 3), dtype=torch.float32, device=means.device)
     accum_w_flat = torch.zeros((hw,), dtype=torch.float32, device=means.device)
+    accum_d_flat = torch.zeros((hw,), dtype=torch.float32, device=means.device)
 
     # Chunk gaussians to reduce Python overhead.
     # This is still O(N*H*W), but avoids an N-sized Python loop.
@@ -144,7 +175,8 @@ def render_gaussians_torch(
         sx_c = sigma_x[start:end].to(torch.float32)
         sy_c = sigma_y[start:end].to(torch.float32)
         op_c = opacities[start:end].to(torch.float32).clamp_min(0.0)
-        col_c = colors[start:end].to(torch.float32)
+        col_c = colors_eval[start:end].to(torch.float32)
+        z_c = z_abs[start:end].to(torch.float32)
 
         dx = grid_x.unsqueeze(0) - px_c.view(-1, 1, 1)
         dy = grid_y.unsqueeze(0) - py_c.view(-1, 1, 1)
@@ -155,9 +187,17 @@ def render_gaussians_torch(
         w_flat = w.reshape(end - start, hw)  # (C,HW)
         accum_w_flat = accum_w_flat + w_flat.sum(dim=0)
         accum_rgb_flat = accum_rgb_flat + (w_flat.t() @ col_c)  # (HW,3)
+        accum_d_flat = accum_d_flat + (w_flat.t() @ z_c)
 
     accum_rgb = accum_rgb_flat.view(height, width, 3)
     accum_w = accum_w_flat.view(height, width)
     denom = 1.0 + accum_w
     out = (background.view(1, 1, 3) + accum_rgb) / denom.unsqueeze(-1)
-    return out.clamp(0.0, 1.0)
+    out = out.clamp(0.0, 1.0)
+
+    if not return_aux:
+        return out
+
+    alpha = (accum_w / (1.0 + accum_w)).clamp(0.0, 1.0)
+    depth = (accum_d_flat.view(height, width) / (accum_w + 1e-6)).clamp_min(0.0)
+    return out, alpha, depth
