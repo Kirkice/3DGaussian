@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import platform
 from typing import Optional, Tuple
 
 import torch
@@ -10,6 +11,14 @@ import torch
 class Camera:
     view: torch.Tensor  # (4,4) float32
     proj: torch.Tensor  # (4,4) float32
+
+
+def get_default_device() -> torch.device:
+    if platform.system() == "Windows" and torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
 
 
 def perspective(fovy_deg: float, aspect: float, znear: float, zfar: float, device=None) -> torch.Tensor:

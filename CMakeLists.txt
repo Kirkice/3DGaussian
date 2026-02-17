@@ -8,7 +8,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(GR_ENABLE_CUDA "Enable CUDA renderer" ON)
 option(GR_BUILD_PYTHON "Build Python extension module" ON)
-option(GR_BUILD_VIEWER "Build realtime viewer executable" ON)
 
 if(GR_BUILD_PYTHON)
   find_package(Python COMPONENTS Interpreter Development QUIET)
@@ -31,40 +30,10 @@ if(GR_BUILD_PYTHON)
   FetchContent_MakeAvailable(pybind11)
 endif()
 
-FetchContent_Declare(
-  tinyobjloader
-  GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git
-  GIT_TAG v2.0.0rc13
-)
-FetchContent_MakeAvailable(tinyobjloader)
-
-if(GR_BUILD_VIEWER)
-  # raylib's CMakeLists uses an older cmake_minimum_required; CMake 4.x requires
-  # setting this variable to allow configuring older projects.
-  set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
-
-  FetchContent_Declare(
-    raylib
-    GIT_REPOSITORY https://github.com/raysan5/raylib.git
-    # Pin to tag 5.0 commit to avoid tag checkout issues.
-    GIT_TAG ae50bfa2cc569c0f8d5bc4315d39db64005b1b08
-  )
-  # Raylib examples are not needed.
-  set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-  set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(raylib)
-endif()
-
 set(GR_CORE_SOURCES
-  src/obj_to_gaussians.cpp
-  src/colors_io.cpp
   src/renderer_cpu.cpp
   src/renderer_dispatch.cpp
 )
-
-if(WIN32)
-  list(APPEND GR_CORE_SOURCES src/image_io_wic.cpp)
-endif()
 
 if(GR_ENABLE_CUDA)
   enable_language(CUDA)
@@ -109,11 +78,6 @@ endif()
 
 add_library(gaussian_core STATIC ${GR_CORE_SOURCES})
 target_include_directories(gaussian_core PUBLIC include)
-target_link_libraries(gaussian_core PUBLIC tinyobjloader)
-
-if(WIN32)
-  target_link_libraries(gaussian_core PRIVATE windowscodecs ole32)
-endif()
 
 if(GR_ENABLE_CUDA)
   target_compile_definitions(gaussian_core PUBLIC GR_CUDA_ENABLED=1)
@@ -128,56 +92,6 @@ if(GR_ENABLE_CUDA)
     target_link_libraries(gaussian_core PUBLIC CUDA::cudart)
   endif()
   set_target_properties(gaussian_core PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-endif()
-
-add_executable(gaussian_render_cli src/cli_main.cpp)
-target_link_libraries(gaussian_render_cli PRIVATE gaussian_core)
-if(GR_ENABLE_CUDA)
-  # Force a CUDA device-link step (otherwise linking a CUDA static lib from a
-  # pure-C++ exe can leave __cudaRegisterLinkedBinary unresolved on MSBuild).
-  target_sources(gaussian_render_cli PRIVATE src/cuda_link_stub.cu)
-  set_target_properties(gaussian_render_cli PROPERTIES
-    CUDA_SEPARABLE_COMPILATION ON
-    CUDA_RESOLVE_DEVICE_SYMBOLS ON
-  )
-endif()
-
-# "cargo run"-style convenience target.
-# Usage:
-#   cmake --build <build_dir> --config Release --target run_cli
-# Then pass args after `--` is generator-specific; easiest is to run the exe
-# directly for now.
-add_custom_target(run_cli
-  COMMAND $<TARGET_FILE:gaussian_render_cli> assets/cube.obj out.ppm 960 540
-  DEPENDS gaussian_render_cli
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  USES_TERMINAL
-)
-
-if(GR_BUILD_VIEWER)
-  add_executable(gaussian_viewer src/viewer_main.cpp)
-  target_link_libraries(gaussian_viewer PRIVATE gaussian_core raylib)
-  if(GR_ENABLE_CUDA)
-    target_sources(gaussian_viewer PRIVATE src/cuda_link_stub.cu)
-    set_target_properties(gaussian_viewer PROPERTIES
-      CUDA_SEPARABLE_COMPILATION ON
-      CUDA_RESOLVE_DEVICE_SYMBOLS ON
-    )
-  endif()
-
-  add_custom_target(run_viewer
-    COMMAND $<TARGET_FILE:gaussian_viewer> assets/cube.obj
-    DEPENDS gaussian_viewer
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    USES_TERMINAL
-  )
-
-  add_custom_target(run_viewer_mabo
-    COMMAND $<TARGET_FILE:gaussian_viewer> assets/mabo.obj
-    DEPENDS gaussian_viewer
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    USES_TERMINAL
-  )
 endif()
 
 if(GR_BUILD_PYTHON)
@@ -199,11 +113,7 @@ if(MSVC)
   # With Visual Studio generators, CUDA build customization can forward these
   # directly to nvcc, which then errors out.
   target_compile_options(gaussian_core PUBLIC $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
-  target_compile_options(gaussian_render_cli PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
   if(TARGET gaussian_renderer)
     target_compile_options(gaussian_renderer PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
-  endif()
-  if(TARGET gaussian_viewer)
-    target_compile_options(gaussian_viewer PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
   endif()
 endif()

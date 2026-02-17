@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "gr/gaussian_types.h"
-#include "gr/obj_to_gaussians.h"
 #include "gr/renderer.h"
 
 namespace py = pybind11;
@@ -26,35 +25,7 @@ static void require_contiguous_f32(const py::array& arr, const char* name) {
 }
 
 PYBIND11_MODULE(gaussian_renderer, m) {
-  m.doc() = "Minimal OBJ -> 3D Gaussians -> CUDA splat renderer";
-
-  m.def(
-      "load_obj_as_gaussians",
-      [](const std::string& path, float default_scale, float default_opacity, int num_surface_samples) {
-        gr::GaussiansHost g = gr::load_obj_as_gaussians(path, default_scale, default_opacity, num_surface_samples);
-        const int n = g.count();
-
-        py::dict out;
-        py::array_t<float> means({n, 3});
-        py::array_t<float> scales({n, 3});
-        py::array_t<float> colors({n, 3});
-        py::array_t<float> opacities({n});
-
-        std::memcpy(means.mutable_data(), g.means.data(), sizeof(float) * static_cast<size_t>(n) * 3);
-        std::memcpy(scales.mutable_data(), g.scales.data(), sizeof(float) * static_cast<size_t>(n) * 3);
-        std::memcpy(colors.mutable_data(), g.colors.data(), sizeof(float) * static_cast<size_t>(n) * 3);
-        std::memcpy(opacities.mutable_data(), g.opacities.data(), sizeof(float) * static_cast<size_t>(n));
-
-        out["means"] = std::move(means);
-        out["scales"] = std::move(scales);
-        out["colors"] = std::move(colors);
-        out["opacities"] = std::move(opacities);
-        return out;
-      },
-      py::arg("path"),
-      py::arg("default_scale") = 0.01f,
-      py::arg("default_opacity") = 0.8f,
-      py::arg("num_surface_samples") = 200000);
+  m.doc() = "3D Gaussian renderer core bindings";
 
   m.def(
       "render_gaussians",
